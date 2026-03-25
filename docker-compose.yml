@@ -1,0 +1,192 @@
+services:
+  # ─── Infrastructure ──────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports: ["9092:9092","9093:9093"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes: [kafka-data:/var/lib/kafka/data]
+    healthcheck:
+      test: ["CMD","kafka-broker-api-versions","--bootstrap-server","localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports: ["9000:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka: {condition: service_healthy}
+
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: postgres-auth
+    environment: {POSTGRES_DB: authdb, POSTGRES_USER: authuser, POSTGRES_PASSWORD: authpass}
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata-auth:/var/lib/postgresql/data
+      - ./infra/sql/auth-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U authuser -d authdb"]
+      interval: 5s
+      retries: 10
+
+  postgres-flight:
+    image: postgres:16-alpine
+    container_name: postgres-flight
+    environment: {POSTGRES_DB: flightdb, POSTGRES_USER: flightuser, POSTGRES_PASSWORD: flightpass}
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata-flight:/var/lib/postgresql/data
+      - ./infra/sql/flight-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U flightuser -d flightdb"]
+      interval: 5s
+      retries: 10
+
+  postgres-booking:
+    image: postgres:16-alpine
+    container_name: postgres-booking
+    environment: {POSTGRES_DB: bookingdb, POSTGRES_USER: bookinguser, POSTGRES_PASSWORD: bookingpass}
+    ports: ["5434:5432"]
+    volumes:
+      - pgdata-booking:/var/lib/postgresql/data
+      - ./infra/sql/booking-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U bookinguser -d bookingdb"]
+      interval: 5s
+      retries: 10
+
+  postgres-payment:
+    image: postgres:16-alpine
+    container_name: postgres-payment
+    environment: {POSTGRES_DB: paymentdb, POSTGRES_USER: paymentuser, POSTGRES_PASSWORD: paymentpass}
+    ports: ["5435:5432"]
+    volumes:
+      - pgdata-payment:/var/lib/postgresql/data
+      - ./infra/sql/payment-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U paymentuser -d paymentdb"]
+      interval: 5s
+      retries: 10
+
+  # ─── Services ─────────────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports: ["8080:8080"]
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET:-SuperSecretKey256BitsLongForHS256AlgorithmUsage}
+      REDIS_HOST: redis
+    depends_on:
+      kafka: {condition: service_healthy}
+    restart: on-failure
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports: ["8081:8081"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-auth:5432/authdb
+      SPRING_DATASOURCE_USERNAME: authuser
+      SPRING_DATASOURCE_PASSWORD: authpass
+      JWT_SECRET: ${JWT_SECRET:-SuperSecretKey256BitsLongForHS256AlgorithmUsage}
+      JWT_EXPIRY_MS: 86400000
+      KAFKA_BOOTSTRAP: kafka:9092
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-your@gmail.com}
+      MAIL_PASS: ${MAIL_PASS:-yourapppassword}
+    depends_on:
+      postgres-auth: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+    restart: on-failure
+
+  flight-service:
+    build: ./flight-service
+    container_name: flight-service
+    ports: ["8082:8082"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-flight:5432/flightdb
+      SPRING_DATASOURCE_USERNAME: flightuser
+      SPRING_DATASOURCE_PASSWORD: flightpass
+      KAFKA_BOOTSTRAP: kafka:9092
+    depends_on:
+      postgres-flight: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+    restart: on-failure
+
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports: ["8083:8083"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-booking:5432/bookingdb
+      SPRING_DATASOURCE_USERNAME: bookinguser
+      SPRING_DATASOURCE_PASSWORD: bookingpass
+      KAFKA_BOOTSTRAP: kafka:9092
+      FLIGHT_SERVICE_URL: http://flight-service:8082
+    depends_on:
+      postgres-booking: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+      flight-service: {condition: service_started}
+    restart: on-failure
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    ports: ["8084:8084"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payment:5432/paymentdb
+      SPRING_DATASOURCE_USERNAME: paymentuser
+      SPRING_DATASOURCE_PASSWORD: paymentpass
+      KAFKA_BOOTSTRAP: kafka:9092
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+    depends_on:
+      postgres-payment: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+    restart: on-failure
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports: ["8085:8085"]
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-your@gmail.com}
+      MAIL_PASS: ${MAIL_PASS:-yourapppassword}
+    depends_on:
+      kafka: {condition: service_healthy}
+    restart: on-failure
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports: ["3000:80"]
+    depends_on: [api-gateway]
+    restart: on-failure
+
+volumes:
+  kafka-data:
+  pgdata-auth:
+  pgdata-flight:
+  pgdata-booking:
+  pgdata-payment:

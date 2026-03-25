@@ -1,0 +1,9 @@
+.vscode/
+.env
+.env.example
+
+# Ignore logs
+*.log
+logs/
+
+k8s/
