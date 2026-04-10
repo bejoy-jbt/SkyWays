@@ -30,6 +30,9 @@ public class Booking {
     @Column(nullable = false)
     private String seatNumber;
 
+    @Column(length = 500)
+    private String seatNumbersCsv;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 

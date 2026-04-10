@@ -20,6 +20,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, e.getMessage());
     }
 
+    @ExceptionHandler(UserDisabledException.class)
+    public ResponseEntity<Map<String,Object>> handleUserDisabled(UserDisabledException e) {
+        return error(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String,Object>> handleValidation(MethodArgumentNotValidException e) {
         String msg = e.getBindingResult().getFieldErrors().stream()

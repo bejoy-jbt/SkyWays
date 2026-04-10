@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { flightApi, bookingApi } from '../services/api'
 import api from '../services/api'
 import { Flight, Passenger } from '../types'
@@ -23,12 +23,19 @@ type CardState = {
 type CardError = Partial<CardState>
 
 export default function BookingPage() {
-  const { flightId, seatNumber } = useParams<{ flightId: string; seatNumber: string }>()
+  const { flightId } = useParams<{ flightId: string }>()
+  const [searchParams] = useSearchParams()
   const nav = useNavigate()
+  const seatNumbers = (searchParams.get('seats') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
 
   const [flight, setFlight]         = useState<Flight | null>(null)
   const [step, setStep]             = useState<'passengers' | 'payment' | 'done'>('passengers')
-  const [passengers, setPassengers] = useState<Passenger[]>([empty()])
+  const [passengers, setPassengers] = useState<Passenger[]>(
+    Array.from({ length: Math.max(1, seatNumbers.length) }, () => empty())
+  )
   const [booking, setBooking]       = useState<any>(null)
   const [loading, setLoading]       = useState(false)
 
@@ -42,6 +49,13 @@ export default function BookingPage() {
   useEffect(() => {
     flightApi.getById(Number(flightId)).then(r => setFlight(r.data))
   }, [flightId])
+
+  useEffect(() => {
+    if (seatNumbers.length === 0) {
+      toast.error('Please select seat(s) first')
+      nav(`/flights/${flightId}`)
+    }
+  }, [seatNumbers.length, nav, flightId])
 
   const updatePassenger = (i: number, p: Passenger) => {
     const arr = [...passengers]; arr[i] = p; setPassengers(arr)
@@ -116,7 +130,8 @@ export default function BookingPage() {
     try {
       const { data } = await bookingApi.create({
         flightId:   Number(flightId),
-        seatNumber,
+        seatNumber: seatNumbers[0],
+        seatNumbers,
         passengers,
       })
       setBooking(data)
@@ -163,7 +178,7 @@ export default function BookingPage() {
           <div>
             <p className="font-semibold">{flight.flightNumber}: {flight.origin} → {flight.destination}</p>
             <p className="text-sm text-gray-500">
-              {format(parseISO(flight.departureTime), 'EEE, MMM d · HH:mm')} · Seat {seatNumber}
+              {format(parseISO(flight.departureTime), 'EEE, MMM d · HH:mm')} · Seats {seatNumbers.join(', ')}
             </p>
           </div>
         </div>
@@ -184,12 +199,9 @@ export default function BookingPage() {
               ))}
             </div>
             <div className="flex gap-3 mt-4">
-              <button type="button" onClick={() => setPassengers([...passengers, empty()])}
-                className="btn-secondary text-sm">+ Add Passenger</button>
-              {passengers.length > 1 && (
-                <button type="button" onClick={() => setPassengers(passengers.slice(0, -1))}
-                  className="btn-secondary text-sm text-red-600">Remove Last</button>
-              )}
+              <p className="text-xs text-gray-500">
+                Passenger count is fixed to selected seats ({seatNumbers.length}).
+              </p>
             </div>
           </div>
           <button type="submit" className="btn-primary w-full py-3">Continue to Payment →</button>
@@ -262,7 +274,7 @@ export default function BookingPage() {
             {/* Order summary */}
             <div className="border-t mt-5 pt-4 space-y-1">
               <div className="flex justify-between text-sm text-gray-500">
-                <span>{flight.flightNumber} · Seat {seatNumber}</span>
+                <span>{flight.flightNumber} · Seats {seatNumbers.join(', ')}</span>
                 <span>${flight.price} × {passengers.length}</span>
               </div>
               <div className="flex justify-between font-semibold text-lg">

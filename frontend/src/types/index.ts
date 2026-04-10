@@ -45,6 +45,7 @@ export interface Booking {
   flightId: number
   flightNumber: string
   seatNumber: string
+  seatNumbers?: string[]
   totalAmount: number
   status: 'PENDING' | 'SEAT_LOCKED' | 'PAYMENT_PROCESSING' | 'CONFIRMED' | 'PAYMENT_FAILED' | 'CANCELLED'
   paymentIntentId?: string
@@ -60,7 +61,7 @@ export interface Payment {
   amount: number
   stripePaymentIntentId?: string
   stripeClientSecret?: string
-  status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED'
+  status: 'PENDING' | 'SUCCEEDED' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'REFUNDED'
   failureReason?: string
   createdAt: string
   processedAt?: string

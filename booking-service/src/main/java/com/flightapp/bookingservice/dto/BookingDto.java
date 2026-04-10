@@ -12,6 +12,7 @@ public class BookingDto {
     private Long flightId;
     private String flightNumber;
     private String seatNumber;
+    private List<String> seatNumbers;
     private BigDecimal totalAmount;
     private String status;
     private String paymentIntentId;

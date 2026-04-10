@@ -1,29 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Seat } from '../../types'
-
-declare const $: any  // SeatCharts.js uses jQuery-like API
 
 interface Props {
   seats: Seat[]
   totalRows: number
   seatsPerRow: number
-  onSeatSelect: (seat: string) => void
-  selectedSeat: string | null
+  onSeatToggle: (seat: string) => void
+  selectedSeats: string[]
 }
 
-export default function SeatMap({ seats, totalRows, seatsPerRow, onSeatSelect, selectedSeat }: Props) {
+export default function SeatMap({ seats, totalRows, seatsPerRow, onSeatToggle, selectedSeats }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [useFallback, setUseFallback] = useState(false)
-
-  useEffect(() => {
-    // Try SeatCharts.js, fall back to custom SVG if unavailable
-    if (typeof (window as any).$ === 'undefined' || typeof (window as any).$.fn?.seatCharts === 'undefined') {
-      setUseFallback(true)
-      return
-    }
-    setUseFallback(false)
-    // SeatCharts.js initialisation (library must be loaded via CDN)
-  }, [seats])
 
   const cols = ['A','B','C','D','E','F'].slice(0, seatsPerRow)
 
@@ -33,7 +20,7 @@ export default function SeatMap({ seats, totalRows, seatsPerRow, onSeatSelect, s
 
   const seatClass = (status: Seat['status'], seatNum: string) => {
     const base = 'w-9 h-9 rounded-t-xl border-2 text-xs font-medium transition-all cursor-pointer flex items-center justify-center'
-    if (seatNum === selectedSeat)
+    if (selectedSeats.includes(seatNum))
       return `${base} bg-brand-600 border-brand-700 text-white scale-110 shadow-md`
     if (status === 'AVAILABLE')
       return `${base} bg-green-100 border-green-400 text-green-700 hover:bg-green-300 hover:scale-105`
@@ -93,10 +80,10 @@ export default function SeatMap({ seats, totalRows, seatsPerRow, onSeatSelect, s
                     <button
                       className={seatClass(status, seatNum)}
                       disabled={disabled}
-                      onClick={() => !disabled && onSeatSelect(seatNum)}
+                      onClick={() => !disabled && onSeatToggle(seatNum)}
                       title={`${seatNum} - ${status}`}
                     >
-                      {rowNum <= 3 ? '👑' : seatNum}
+                      {seatNum}
                     </button>
                     {/* Aisle gap in the middle */}
                     {ci === Math.floor(seatsPerRow/2) - 1 && (
@@ -110,11 +97,7 @@ export default function SeatMap({ seats, totalRows, seatsPerRow, onSeatSelect, s
         })}
       </div>
 
-      {/* Class labels */}
-      <div className="flex gap-4 mt-3 text-xs text-gray-500">
-        <span className="flex items-center gap-1">👑 Rows 1–3: Business Class</span>
-        <span>Rows 4+: Economy Class</span>
-      </div>
+      <div className="mt-3 text-xs text-gray-500">All seats are Economy Class.</div>
     </div>
   )
 }

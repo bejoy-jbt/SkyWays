@@ -54,11 +54,23 @@ public class EmailService {
         sendHtml(event.getUserEmail(), "Booking Cancelled - " + flight, html);
     }
 
+    public void sendTicketCancellation(BookingEvent event) {
+        log.info("Sending ticket cancellation email to {}", event.getUserEmail());
+        String ref       = event.getBookingId().substring(0, 8).toUpperCase();
+        String flight    = event.getFlightNumber() != null ? event.getFlightNumber() : "N/A";
+        String seat      = event.getSeatNumber()   != null ? event.getSeatNumber()   : "N/A";
+        String amount    = event.getAmount()       != null ? event.getAmount().toPlainString() : "0";
+        String passenger = event.getFailureReason() != null ? event.getFailureReason() : "Passenger";
+
+        String html = buildTicketCancellationHtml(ref, flight, passenger, seat, amount);
+        sendHtml(event.getUserEmail(), "Ticket Cancelled - " + flight, html);
+    }
+
     private void sendHtml(String to, String subject, String htmlBody) {
         try {
             MimeMessage msg = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
-            helper.setFrom(fromAddress, "FlightApp");
+            helper.setFrom(fromAddress, "SkyWays");
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
@@ -162,6 +174,45 @@ public class EmailService {
             + "</table>"
             + "<div style='margin-top:24px;padding:16px;background:#eff6ff;border-left:4px solid #2563eb'>"
             + "<p style='margin:0;color:#1e3a8a'>Refund initiated: your payment will be refunded to the original payment method (processing time depends on your bank).</p>"
+            + "</div>"
+            + "</div>"
+            + "<div style='padding:16px;background:#f9fafb;text-align:center;color:#9ca3af;font-size:12px'>"
+            + "FlightApp - Your trusted travel partner"
+            + "</div>"
+            + "</div>";
+    }
+
+    private String buildTicketCancellationHtml(String ref, String flight, String passenger, String seat, String amount) {
+        return "<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto'>"
+            + "<div style='background:#1f2937;padding:24px;text-align:center'>"
+            + "<h1 style='color:white;margin:0'>Ticket Cancelled</h1>"
+            + "</div>"
+            + "<div style='padding:24px;background:#ffffff'>"
+            + "<p style='color:#374151;font-size:16px'>One passenger ticket has been cancelled successfully.</p>"
+            + "<table style='width:100%;border-collapse:collapse;margin-top:16px'>"
+            + "<tr style='background:#f3f4f6'>"
+            + "<td style='padding:12px;font-weight:bold;color:#374151'>Booking Ref</td>"
+            + "<td style='padding:12px;color:#6b7280;font-family:monospace;font-size:16px'>" + ref + "</td>"
+            + "</tr>"
+            + "<tr>"
+            + "<td style='padding:12px;font-weight:bold;color:#374151'>Passenger</td>"
+            + "<td style='padding:12px;color:#6b7280'>" + passenger + "</td>"
+            + "</tr>"
+            + "<tr style='background:#f3f4f6'>"
+            + "<td style='padding:12px;font-weight:bold;color:#374151'>Flight</td>"
+            + "<td style='padding:12px;color:#6b7280'>" + flight + "</td>"
+            + "</tr>"
+            + "<tr>"
+            + "<td style='padding:12px;font-weight:bold;color:#374151'>Seat</td>"
+            + "<td style='padding:12px;color:#6b7280'>" + seat + "</td>"
+            + "</tr>"
+            + "<tr style='background:#f3f4f6'>"
+            + "<td style='padding:12px;font-weight:bold;color:#374151'>Refund Amount</td>"
+            + "<td style='padding:12px;color:#111827;font-weight:bold;font-size:18px'>$" + amount + " USD</td>"
+            + "</tr>"
+            + "</table>"
+            + "<div style='margin-top:24px;padding:16px;background:#eff6ff;border-left:4px solid #2563eb'>"
+            + "<p style='margin:0;color:#1e3a8a'>Refund initiated for this ticket and will be returned to the original payment method.</p>"
             + "</div>"
             + "</div>"
             + "<div style='padding:16px;background:#f9fafb;text-align:center;color:#9ca3af;font-size:12px'>"

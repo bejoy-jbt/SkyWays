@@ -48,6 +48,9 @@ export const bookingApi = {
   create:   (data: any)  => api.post('/bookings', data),
   getMy:    ()           => api.get('/bookings/my'),
   getById:  (id: string) => api.get(`/bookings/${id}`),
+  delete:   (id: string) => api.delete(`/bookings/${id}`),
+  deletePassengerTicket: (id: string, passengerIndex: number) =>
+    api.delete(`/bookings/${id}/tickets/passenger/${passengerIndex}`),
   getAll:   ()           => api.get('/bookings/admin/all'),
 }
 

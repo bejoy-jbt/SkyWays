@@ -34,4 +34,11 @@ public class NotificationConsumer {
                 event.getBookingId(), event.getUserEmail());
         emailService.sendBookingCancellation(event);
     }
+
+    @KafkaListener(topics = "booking.ticket.cancelled", groupId = "notification-group")
+    public void onBookingTicketCancelled(BookingEvent event) {
+        log.info("Sending ticket cancellation email for booking {} to {}",
+                event.getBookingId(), event.getUserEmail());
+        emailService.sendTicketCancellation(event);
+    }
 }

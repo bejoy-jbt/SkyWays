@@ -73,18 +73,30 @@ public class PaymentService {
                 log.info("Refund already applied for booking {}", event.getBookingId());
                 return;
             }
-            if (payment.getStatus() != Payment.PaymentStatus.SUCCEEDED) {
+            if (payment.getStatus() != Payment.PaymentStatus.SUCCEEDED
+                    && payment.getStatus() != Payment.PaymentStatus.PARTIALLY_REFUNDED) {
                 log.info("Skipping refund for booking {} because payment status is {}",
                         event.getBookingId(), payment.getStatus());
                 return;
             }
 
-            // This project currently runs Stripe payments in auto-confirm mode (or auto-approve in dev).
-            // For now we mark as refunded in our DB; Stripe refund integration can be added later.
-            payment.setStatus(Payment.PaymentStatus.REFUNDED);
+            BigDecimal refundAmount = event.getAmount() != null ? event.getAmount() : payment.getAmount();
+            if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("Skipping refund for booking {} because amount is {}", event.getBookingId(), refundAmount);
+                return;
+            }
+            BigDecimal remaining = payment.getAmount().subtract(refundAmount);
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                payment.setAmount(BigDecimal.ZERO);
+                payment.setStatus(Payment.PaymentStatus.REFUNDED);
+            } else {
+                payment.setAmount(remaining);
+                payment.setStatus(Payment.PaymentStatus.PARTIALLY_REFUNDED);
+            }
             payment.setProcessedAt(LocalDateTime.now());
             paymentRepository.save(payment);
-            log.info("Marked payment as REFUNDED for booking {}", event.getBookingId());
+            log.info("Applied refund for booking {}, refunded={}, remaining={}",
+                    event.getBookingId(), refundAmount, payment.getAmount());
         }, () -> log.warn("Refund requested but no payment found for booking {}", event.getBookingId()));
     }
 

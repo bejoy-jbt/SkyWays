@@ -28,6 +28,10 @@ public class KafkaTopicConfig {
         return TopicBuilder.name("booking.cancelled").partitions(3).replicas(1).build();
     }
 
+    @Bean public NewTopic bookingTicketCancelled() {
+        return TopicBuilder.name("booking.ticket.cancelled").partitions(3).replicas(1).build();
+    }
+
     @Bean public NewTopic paymentRefundRequested() {
         return TopicBuilder.name("payment.refund.requested").partitions(3).replicas(1).build();
     }

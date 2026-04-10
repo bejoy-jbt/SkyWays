@@ -31,7 +31,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="search"  element={<PrivateRoute><SearchPage /></PrivateRoute>} />
         <Route path="flights/:id" element={<PrivateRoute><FlightDetailPage /></PrivateRoute>} />
-        <Route path="book/:flightId/:seatNumber" element={<PrivateRoute><BookingPage /></PrivateRoute>} />
+        <Route path="book/:flightId" element={<PrivateRoute><BookingPage /></PrivateRoute>} />
         <Route path="my-bookings" element={<PrivateRoute><MyBookingsPage /></PrivateRoute>} />
         <Route path="admin/*" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       </Route>

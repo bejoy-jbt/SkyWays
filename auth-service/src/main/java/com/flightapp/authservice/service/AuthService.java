@@ -7,6 +7,7 @@ import com.flightapp.authservice.repository.UserRepository;
 import com.flightapp.authservice.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+
+    @Value("${app.admin.contact-email:${spring.mail.username:admin@flightapp.com}}")
+    private String adminContactEmail;
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
@@ -45,7 +49,11 @@ public class AuthService {
     public AuthResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(InvalidCredentialsException::new);
-        if (!user.isEnabled()) throw new InvalidCredentialsException();
+        if (!user.isEnabled()) {
+            throw new UserDisabledException(
+                    "This user is disabled by admin. Please contact admin at " + adminContactEmail + "."
+            );
+        }
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }

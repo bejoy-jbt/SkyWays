@@ -12,6 +12,8 @@ public class CreateBookingRequest {
     @NotBlank
     private String seatNumber;
 
+    private List<String> seatNumbers;
+
     @NotEmpty
     private List<PassengerDto> passengers;
 }

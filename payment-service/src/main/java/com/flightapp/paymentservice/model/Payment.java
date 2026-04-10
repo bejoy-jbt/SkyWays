@@ -35,5 +35,5 @@ public class Payment {
     private LocalDateTime createdAt;
     private LocalDateTime processedAt;
 
-    public enum PaymentStatus { PENDING, SUCCEEDED, FAILED, REFUNDED }
+    public enum PaymentStatus { PENDING, SUCCEEDED, PARTIALLY_REFUNDED, FAILED, REFUNDED }
 }

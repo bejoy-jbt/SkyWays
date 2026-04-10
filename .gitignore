@@ -7,3 +7,56 @@
 logs/
 
 k8s/
+
+# Maven build
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Gradle build
+.gradle/
+build/
+
+# Eclipse project files
+.classpath
+.project
+.settings/
+
+# IntelliJ project files
+*.iml
+.idea/
+
+# VS Code project files
+.vscode/
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Compiled class files
+*.class
+
+# Bin directories
+bin/
+
+# Node.js (if frontend included)
+node_modules/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Package managers
+package-lock.json
+yarn.lock

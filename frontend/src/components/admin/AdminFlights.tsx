@@ -79,20 +79,55 @@ export default function AdminFlights() {
 }
 
 function FlightForm({ flight, onClose, onSave }: { flight: Flight|null; onClose: ()=>void; onSave: ()=>void }) {
-  const [form, setForm] = useState<Partial<Flight>>(flight ?? {
-    flightNumber:'', origin:'', destination:'', departureDate:'',
-    departureTime:'', arrivalTime:'', price:0, aircraftType:'Boeing 737', totalRows:28, seatsPerRow:6, status:'SCHEDULED'
-  })
+  const initial: Partial<Flight> = flight
+    ? {
+        ...flight,
+        // UI uses time-only inputs; backend stores ISO datetime strings
+        departureTime: flight.departureTime ? flight.departureTime.substring(11, 16) : '',
+        arrivalTime:   flight.arrivalTime ? flight.arrivalTime.substring(11, 16) : '',
+      }
+    : {
+        flightNumber:'', origin:'', destination:'', departureDate:'',
+        departureTime:'', arrivalTime:'', price:0, aircraftType:'Boeing 737', totalRows:28, seatsPerRow:6, status:'SCHEDULED'
+      }
+
+  const [form, setForm] = useState<Partial<Flight>>(initial)
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
     setForm(f => ({...f, [k]: e.target.value}))
 
+  const toLocalDateTime = (date: string | undefined, timeOrDateTime: string | undefined) => {
+    if (!timeOrDateTime) return ''
+
+    // If the control still provides a full datetime-local value (YYYY-MM-DDTHH:mm[...]),
+    // normalize it to include seconds.
+    if (timeOrDateTime.includes('T')) {
+      const v = timeOrDateTime.trim()
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return `${v}:00`
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(v)) return v
+      return v
+    }
+
+    if (!date) return ''
+    const t = timeOrDateTime.trim()
+    // HH:mm -> YYYY-MM-DDTHH:mm:00
+    return `${date}T${t}:00`
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    const payload: any = {
+      ...form,
+      price: Number(form.price ?? 0),
+      totalRows: Number(form.totalRows ?? 0),
+      seatsPerRow: Number(form.seatsPerRow ?? 0),
+      departureTime: toLocalDateTime(form.departureDate as any, form.departureTime as any),
+      arrivalTime: toLocalDateTime(form.departureDate as any, form.arrivalTime as any),
+    }
     if (flight?.id) {
-      await flightApi.update(flight.id, form)
+      await flightApi.update(flight.id, payload)
       toast.success('Flight updated')
     } else {
-      await flightApi.create(form)
+      await flightApi.create(payload)
       toast.success('Flight created')
     }
     onSave()
@@ -106,8 +141,8 @@ function FlightForm({ flight, onClose, onSave }: { flight: Flight|null; onClose:
         <div><label className="label">Origin</label><input className="input" value={form.origin??''} onChange={set('origin')} required /></div>
         <div><label className="label">Destination</label><input className="input" value={form.destination??''} onChange={set('destination')} required /></div>
         <div><label className="label">Date</label><input className="input" type="date" value={form.departureDate??''} onChange={set('departureDate')} required /></div>
-        <div><label className="label">Departure</label><input className="input" type="datetime-local" value={form.departureTime??''} onChange={set('departureTime')} required /></div>
-        <div><label className="label">Arrival</label><input className="input" type="datetime-local" value={form.arrivalTime??''} onChange={set('arrivalTime')} required /></div>
+        <div><label className="label">Departure</label><input className="input" type="time" value={form.departureTime??''} onChange={set('departureTime')} required /></div>
+        <div><label className="label">Arrival</label><input className="input" type="time" value={form.arrivalTime??''} onChange={set('arrivalTime')} required /></div>
         <div><label className="label">Price</label><input className="input" type="number" value={form.price??''} onChange={set('price')} required /></div>
         <div><label className="label">Aircraft</label><input className="input" value={form.aircraftType??''} onChange={set('aircraftType')} /></div>
         <div><label className="label">Rows</label><input className="input" type="number" value={form.totalRows??28} onChange={set('totalRows')} /></div>

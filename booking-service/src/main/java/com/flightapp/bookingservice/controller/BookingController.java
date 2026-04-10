@@ -41,6 +41,32 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.cancelBooking(email, id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBooking(
+            @RequestHeader("X-User-Email") String email,
+            @PathVariable String id) {
+        bookingService.deleteBooking(email, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/tickets/{seatNumber}")
+    public ResponseEntity<Void> deleteSingleTicket(
+            @RequestHeader("X-User-Email") String email,
+            @PathVariable String id,
+            @PathVariable String seatNumber) {
+        bookingService.deleteSingleTicket(email, id, seatNumber);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/tickets/passenger/{passengerIndex}")
+    public ResponseEntity<Void> deletePassengerTicket(
+            @RequestHeader("X-User-Email") String email,
+            @PathVariable String id,
+            @PathVariable int passengerIndex) {
+        bookingService.deletePassengerTicket(email, id, passengerIndex);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/admin/all")
     public ResponseEntity<List<BookingDto>> allBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());

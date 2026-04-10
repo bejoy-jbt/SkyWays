@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { flightApi } from '../services/api'
 import { Flight, Seat } from '../types'
 import SeatMap from '../components/flight/SeatMap'
@@ -10,9 +10,16 @@ import { format, parseISO } from 'date-fns'
 export default function FlightDetailPage() {
   const { id }       = useParams<{ id: string }>()
   const nav          = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedPassengers = Number(searchParams.get('passengers') || '1')
   const [flight, setFlight]           = useState<Flight | null>(null)
   const [seats, setSeats]             = useState<Seat[]>([])
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null)
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([])
+  const [passengers, setPassengers] = useState<number>(
+    Number.isFinite(requestedPassengers) && requestedPassengers >= 1 && requestedPassengers <= 6
+      ? requestedPassengers
+      : 1
+  )
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
@@ -33,6 +40,17 @@ export default function FlightDetailPage() {
     }
     load()
   }, [id])
+
+  const toggleSeat = (seat: string) => {
+    setSelectedSeats((prev) => {
+      if (prev.includes(seat)) return prev.filter((s) => s !== seat)
+      if (prev.length >= passengers) {
+        toast.error(`You can select up to ${passengers} seat${passengers > 1 ? 's' : ''}`)
+        return prev
+      }
+      return [...prev, seat]
+    })
+  }
 
   if (loading) return <div className="text-center py-16 text-gray-400">Loading...</div>
   if (!flight)  return null
@@ -80,27 +98,41 @@ export default function FlightDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Seat map */}
         <div className="lg:col-span-2 card">
-          <h3 className="font-semibold text-gray-900 mb-4">Select Your Seat</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Select Your Seats</h3>
+          <div className="mb-4 flex items-center gap-3">
+            <label className="text-sm text-gray-600">Passengers</label>
+            <select
+              className="input w-40"
+              value={passengers}
+              onChange={(e) => {
+                const next = Number(e.target.value)
+                setPassengers(next)
+                setSelectedSeats((curr) => curr.slice(0, next))
+              }}
+            >
+              {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="text-sm text-gray-500">
+              Selected: {selectedSeats.length}/{passengers}
+            </span>
+          </div>
           <SeatMap
             seats={seats}
             totalRows={flight.totalRows}
             seatsPerRow={flight.seatsPerRow}
-            onSeatSelect={setSelectedSeat}
-            selectedSeat={selectedSeat}
+            onSeatToggle={toggleSeat}
+            selectedSeats={selectedSeats}
           />
         </div>
 
         {/* Booking summary */}
         <div className="card h-fit sticky top-24">
           <h3 className="font-semibold text-gray-900 mb-4">Booking Summary</h3>
-          {selectedSeat ? (
+          {selectedSeats.length > 0 ? (
             <>
               <div className="bg-brand-50 rounded-lg p-3 mb-4">
-                <p className="text-sm text-gray-500">Selected Seat</p>
-                <p className="text-2xl font-bold text-brand-700">{selectedSeat}</p>
-                <p className="text-xs text-gray-400">
-                  {parseInt(selectedSeat) <= 3 ? '👑 Business Class' : '💺 Economy Class'}
-                </p>
+                <p className="text-sm text-gray-500">Selected Seats</p>
+                <p className="text-lg font-bold text-brand-700">{selectedSeats.join(', ')}</p>
               </div>
               <div className="space-y-2 mb-4 text-sm">
                 <div className="flex justify-between">
@@ -113,14 +145,20 @@ export default function FlightDetailPage() {
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>Total</span>
-                  <span className="text-brand-700">${flight.price}</span>
+                  <span className="text-brand-700">${(flight.price * selectedSeats.length).toFixed(2)}</span>
                 </div>
               </div>
               <button
-                onClick={() => nav(`/book/${flight.id}/${selectedSeat}`)}
+                disabled={selectedSeats.length !== passengers}
+                onClick={() => nav(`/book/${flight.id}?seats=${encodeURIComponent(selectedSeats.join(','))}`)}
                 className="btn-primary w-full flex items-center justify-center gap-2">
                 <DollarSign className="w-4 h-4" /> Continue to Booking
               </button>
+              {selectedSeats.length !== passengers && (
+                <p className="mt-2 text-xs text-red-500">
+                  Please select exactly {passengers} seat{passengers > 1 ? 's' : ''}.
+                </p>
+              )}
             </>
           ) : (
             <div className="text-center py-8 text-gray-400">

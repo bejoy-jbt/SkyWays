@@ -109,7 +109,7 @@ export default function SearchPage() {
                     <p className="text-3xl font-bold text-brand-700">${f.price}</p>
                     <p className="text-xs text-gray-400">per person</p>
                   </div>
-                  <button onClick={() => nav(`/flights/${f.id}`)}
+                  <button onClick={() => nav(`/flights/${f.id}?passengers=${form.passengers}`)}
                     className="btn-primary flex items-center gap-2">
                     Select <ArrowRight className="w-4 h-4" />
                   </button>
